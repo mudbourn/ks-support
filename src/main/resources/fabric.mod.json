@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "ks_support",
+  "version": "${version}",
+  "name": "KS Support Mod",
+  "description": "Killstreak debug/admin commands, Hurl/Mjolnir texture swap, and flight sweep for MMSLive01.",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["info.mudbourn.kssupport.KsSupport"]
+  },
+  "mixins": [
+    "ks_support.mixins.json",
+    "ks_support.hurl.mixins.json"
+  ],
+  "accessWidener": "ks_support.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

@@ -1,0 +1,1 @@
+$execute as @a if data entity @s {UUID:$(owner)} run tellraw @s [{"text":"Your streak artifact ","color":"gray"},{"text":"couldn't fight its way back to you","color":"red"},{"text":" and has vanished for good.","color":"gray"}]

@@ -1,0 +1,2 @@
+# Streak Apple — Regen II 5s + Absorption 2min
+$give @s minecraft:golden_apple[custom_data={streak_item:1,streak_owner:$(owner)},custom_name={text:"Streak Apple",color:"yellow",italic:false},enchantments={"killstreak:contract_of_the_gods":1},lore=[{text:"Regeneration II for 5s + Absorption for 2min.",italic:false,color:"gray"},{text:"Contract-bound. Vanishes on death.",italic:false,color:"dark_gray"}]] 1

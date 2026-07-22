@@ -1,0 +1,17 @@
+{
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:effects_changed",
+      "conditions": {
+        "effects": {
+          "minecraft:resistance": {
+            "amplifier": { "min": 4 }
+          }
+        }
+      }
+    }
+  },
+  "rewards": {
+    "function": "killstreak:adrenaline_start"
+  }
+}

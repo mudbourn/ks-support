@@ -1,0 +1,2 @@
+# Combat Heal — Strong Instant Health II
+$give @s minecraft:splash_potion[custom_data={streak_item:1,streak_owner:$(owner)},custom_name={text:"Combat Heal",color:"red",italic:false},potion_contents={potion:"minecraft:strong_healing"},enchantments={"killstreak:contract_of_the_gods":1},lore=[{text:"Instant Health II on impact.",italic:false,color:"gray"},{text:"Contract-bound. Vanishes on death.",italic:false,color:"dark_gray"}]] 1

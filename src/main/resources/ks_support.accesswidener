@@ -1,0 +1,3 @@
+accessWidener v2 named
+accessible field net/minecraft/commands/CommandSourceStack LEVEL_GAMEMASTERS Lnet/minecraft/server/permissions/PermissionCheck;
+accessible field net/minecraft/server/level/ServerPlayer server Lnet/minecraft/server/MinecraftServer;

@@ -1,0 +1,12 @@
+{
+  "required": false,
+  "package": "info.mudbourn.kssupport.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "info.mudbourn.kssupport.mixin.HurlMixinGate",
+  "mixins": [
+    "MaceEntityRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
