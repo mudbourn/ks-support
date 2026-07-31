@@ -1,0 +1,80 @@
+name: Release
+
+# Manual only — releasing is a deliberate act, not a side effect of pushing.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.3.0) — must already match mod_version in gradle.properties"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a pre-release"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version against gradle.properties
+        run: |
+          set -euo pipefail
+          INPUT="${{ inputs.version }}"
+          if [[ ! "$INPUT" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "ERROR: invalid version '$INPUT'. Expected X.Y.Z"
+            exit 1
+          fi
+          DECLARED=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2- | tr -d '[:space:]')
+          if [[ "$INPUT" != "$DECLARED" ]]; then
+            echo "ERROR: version mismatch."
+            echo "  requested:         $INPUT"
+            echo "  gradle.properties: $DECLARED"
+            echo
+            echo "Bump mod_version in gradle.properties and commit it first."
+            exit 1
+          fi
+          echo "Version $INPUT confirmed."
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Collect artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # Loom leaves the unremapped dev jars alongside the real one.
+          find build/libs -maxdepth 1 -name '*.jar' \
+            ! -name '*-dev.jar' \
+            ! -name '*-dev-shadow.jar' \
+            -exec cp {} dist/ \;
+          ls -la dist
+          test -n "$(ls -A dist)" || { echo "ERROR: no jars produced"; exit 1; }
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.version }}"
+          FLAGS=(--generate-notes --title "ks-support v${VERSION}")
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            FLAGS+=(--prerelease)
+          fi
+          gh release create "v${VERSION}" dist/*.jar \
+            --target "${{ github.sha }}" \
+            "${FLAGS[@]}"
