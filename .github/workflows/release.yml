@@ -1,11 +1,15 @@
+# Release — thin caller. All logic lives in the reusable engine at
+# mudbourn/mms-pack/.github/workflows/mod-release.yml, which derives libs,
+# sibling composite builds, and version stamping from this repo's own tree.
+# Keep this file identical to mms-pack's .github/workflows/_caller-template.yml;
+# `mms-repos.py check-callers` enforces that.
 name: Release
 
-# Manual only — releasing is a deliberate act, not a side effect of pushing.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. 0.3.0) — must already match mod_version in gradle.properties"
+        description: "Release version (e.g. 0.1.0) — authoritative; gradle.properties is bumped to match"
         required: true
         type: string
       prerelease:
@@ -14,122 +18,16 @@ on:
         type: boolean
         default: false
       dry_run:
-        description: "Build and validate only — do not tag or publish"
+        description: "Build and validate only — do not commit, tag, or publish"
         required: false
         type: boolean
         default: false
 
-permissions:
-  contents: write
-
 jobs:
   release:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-
-      # The invariant worth protecting is "the jar's internal version equals its
-      # tag" — not "a human already edited gradle.properties". So the requested
-      # version is authoritative: if gradle.properties disagrees, bump it here
-      # and commit, rather than failing and making the release a two-step dance.
-      - name: Resolve version
-        id: version
-        run: |
-          set -euo pipefail
-          INPUT="${{ inputs.version }}"
-          if [[ ! "$INPUT" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "ERROR: invalid version '$INPUT'. Expected X.Y.Z"
-            exit 1
-          fi
-
-          if gh release view "v${INPUT}" >/dev/null 2>&1; then
-            echo "ERROR: release v${INPUT} already exists."
-            echo "Pick a new version, or use dry_run to rebuild without publishing."
-            exit 1
-          fi
-
-          DECLARED=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2- | tr -d '[:space:]')
-          if [[ "$INPUT" == "$DECLARED" ]]; then
-            echo "gradle.properties already at $INPUT."
-            echo "bumped=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          NEWEST=$(printf '%s\n%s\n' "$INPUT" "$DECLARED" | sort -V | tail -1)
-          if [[ "$NEWEST" != "$INPUT" ]]; then
-            echo "ERROR: $INPUT is older than gradle.properties ($DECLARED)."
-            exit 1
-          fi
-
-          echo "Bumping mod_version: $DECLARED -> $INPUT"
-          sed -i -E "s|^mod_version=.*|mod_version=${INPUT}|" gradle.properties
-          grep -E '^mod_version=' gradle.properties
-          echo "bumped=true" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: Build
-        run: ./gradlew build --no-daemon --stacktrace
-
-      - name: Collect artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          # Loom leaves the unremapped dev jars alongside the real one.
-          find build/libs -maxdepth 1 -name '*.jar' \
-            ! -name '*-dev.jar' \
-            ! -name '*-dev-shadow.jar' \
-            -exec cp {} dist/ \;
-          ls -la dist
-          test -n "$(ls -A dist)" || { echo "ERROR: no jars produced"; exit 1; }
-
-      # Deliberately after the build. Committing the bump up front means a
-      # failed build leaves main claiming a version that has no release.
-      - name: Commit version bump
-        if: ${{ steps.version.outputs.bumped == 'true' && !inputs.dry_run }}
-        run: |
-          set -euo pipefail
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gradle.properties
-          git commit -m "Bump version to ${{ inputs.version }}"
-          git push origin HEAD:${{ github.ref_name }}
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-        id: bumpcommit
-
-      # A dry run still builds and still enforces the version check, so it can
-      # be re-run against the current released version without burning a new
-      # one. Artifacts land on the run instead of on a release.
-      - name: Upload artifacts (dry run)
-        if: ${{ inputs.dry_run }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ks-support-${{ inputs.version }}
-          path: dist/*.jar
-
-      - name: Publish release
-        if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION="${{ inputs.version }}"
-          FLAGS=(--generate-notes --title "ks-support v${VERSION}")
-          if [ "${{ inputs.prerelease }}" = "true" ]; then
-            FLAGS+=(--prerelease)
-          fi
-          # Tag the bump commit when there was one — github.sha still points at
-          # the pre-bump tree, and tagging that would ship a jar whose version
-          # the tagged source does not declare.
-          TARGET="${{ steps.bumpcommit.outputs.sha || github.sha }}"
-          gh release create "v${VERSION}" dist/*.jar \
-            --target "$TARGET" \
-            "${FLAGS[@]}"
+    uses: mudbourn/mms-pack/.github/workflows/mod-release.yml@main
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      prerelease: ${{ inputs.prerelease }}
+      dry_run: ${{ inputs.dry_run }}
